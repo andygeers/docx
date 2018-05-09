@@ -19,14 +19,17 @@ module Docx
   #   end
   class Document
     attr_reader :xml, :doc, :zip, :styles
-    
+
     def initialize(path, &block)
       @replace = {}
       @zip = Zip::File.open(path)
       @document_xml = @zip.read('word/document.xml')
       @doc = Nokogiri::XML(@document_xml)
-      @styles_xml = @zip.read('word/styles.xml')
-      @styles = Nokogiri::XML(@styles_xml)
+      begin
+        @styles_xml = @zip.read('word/styles.xml')
+        @styles = Nokogiri::XML(@styles_xml)
+      rescue Errno::ENOENT => e
+      end
       if block_given?
         yield self
         @zip.close
@@ -70,7 +73,7 @@ module Docx
     # Some documents have this set, others don't.
     # Values are returned as half-points, so to get points, that's why it's divided by 2.
     def font_size
-      size_tag = @styles.xpath('//w:docDefaults//w:rPrDefault//w:rPr//w:sz').first
+      size_tag = @styles && @styles.xpath('//w:docDefaults//w:rPrDefault//w:rPr//w:sz').first
       size_tag ? size_tag.attributes['val'].value.to_i / 2 : nil
     end
 
